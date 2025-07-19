@@ -13,6 +13,7 @@ from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from config import LLM_MODEL, TEMPERATURE, SYSTEM_TEMPLATE
 from tools.restaurant_tools import search_restaurants_tool
 from schemas.schemas import OrderRequest, OrderResponse
+from services.firestore_service import firestore_service
 
 
 class AgentService:
@@ -80,34 +81,74 @@ class AgentService:
 
     async def process_order(self, req: OrderRequest) -> OrderResponse:
         """Process an order request and return the response."""
-        # Create a new session ID if needed
-        session_id = req.session_id or self.create_session_id()
+        # Create a new session ID for each request
+        session_id = self.create_session_id()
         memory, agent = self.get_agent(session_id)
 
         try:
             # Clear existing memory for this session
             memory.clear()
-
-            # Process conversation history
-            for i, msg in enumerate(req.messages):
-                if msg.user:
-                    # Add user message to memory
-                    memory.chat_memory.add_user_message(msg.user)
-
-                    # If this is the last message, invoke the agent
-                    if i == len(req.messages) - 1:
-                        result = agent.invoke({"input": msg.user})
-                        return OrderResponse(
-                            session_id=session_id, response=str(result["output"])
-                        )
-
-                if msg.ai:
-                    # Add AI response to memory
-                    memory.chat_memory.add_ai_message(msg.ai)
-
-            # If no user message in the last item, return an error
-            raise HTTPException(
-                status_code=400, detail="Last message must be from user"
+            # Print what user sent
+            print(f"[ORDER ENDPOINT] User request: task_id={req.task_id}")
+            
+            # Fetch messages from Firestore
+            firestore_messages = firestore_service.get_task_messages(req.task_id)
+            
+            # Print response from Firebase when requesting messages from the task id
+            print(f"[ORDER ENDPOINT] Firebase response for task_id={req.task_id}:")
+            print(f"[ORDER ENDPOINT] Number of messages retrieved: {len(firestore_messages)}")
+            for i, msg in enumerate(firestore_messages):
+                print(f"[ORDER ENDPOINT] Message {i+1}: {msg}")
+            
+            if not firestore_messages:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No messages found for task_id: {req.task_id}"
+                )
+            
+            # Process messages from Firestore (they come in descending order, so reverse)
+            firestore_messages.reverse()
+            
+            last_user_message = None
+            for msg in firestore_messages:
+                # Handle the actual Firestore message format: sender/text
+                if 'sender' in msg and 'text' in msg:
+                    if msg['sender'] == 'me' or msg['sender'] == 'user':
+                        last_user_message = msg['text']
+                        memory.chat_memory.add_user_message(msg['text'])
+                    elif msg['sender'] == 'ai' or msg['sender'] == 'assistant':
+                        memory.chat_memory.add_ai_message(msg['text'])
+                # Fallback to other formats if they exist
+                elif 'user' in msg and msg['user']:
+                    last_user_message = msg['user']
+                    memory.chat_memory.add_user_message(msg['user'])
+                elif 'ai' in msg and msg['ai']:
+                    memory.chat_memory.add_ai_message(msg['ai'])
+                elif 'message' in msg:
+                    # If it's a generic message, assume it's from user
+                    last_user_message = msg['message']
+                    memory.chat_memory.add_user_message(msg['message'])
+            
+            if not last_user_message:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No user messages found in task"
+                )
+            
+            # Process the last user message with the agent
+            result = agent.invoke({"input": last_user_message})
+            ai_response = str(result["output"])
+            
+            # Write the AI response back to Firestore
+            firestore_service.write_task_message(
+                task_id=req.task_id,
+                sender="ai",
+                text=ai_response
+            )
+            
+            return OrderResponse(
+                session_id=session_id, 
+                response=ai_response
             )
 
         except HTTPException:

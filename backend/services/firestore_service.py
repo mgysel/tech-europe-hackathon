@@ -2,20 +2,16 @@
 
 from __future__ import annotations
 
-import os
 import json
 from typing import Any, Dict, List, Optional
 
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+from config import FIREBASE_ADMIN_KEY
 
 class FirestoreService:
     """Service wrapper around Firestore client.
-
-    The service lazily initializes the Firebase Admin SDK using the provided service
-    account key JSON file (``admin_key.json`` by default or the path specified in
-    the ``FIREBASE_ADMIN_KEY_PATH`` environment variable).
     """
 
     def __init__(self, key_path: Optional[str] | None = None):
@@ -29,20 +25,19 @@ class FirestoreService:
         4. Default file name ``admin_key.json`` in project root.
         """
 
-        # Attempt to load credentials from JSON string in env var
-        key_json_str = os.getenv("admin_key.json")
-
         if not firebase_admin._apps:
-            if key_json_str:
-                # Parse the JSON string into a dict and build credentials from it
-                cred_dict = json.loads(key_json_str)
+            # Load from FIREBASE_ADMIN_KEY environment variable (JSON string)
+            firebase_admin_key = FIREBASE_ADMIN_KEY
+            print(f"Firebase admin key : {firebase_admin_key}")
+            if not firebase_admin_key:
+                raise ValueError("FIREBASE_ADMIN_KEY environment variable is required")
+            
+            try:
+                print("Loading credentials from FIREBASE_ADMIN_KEY environment variable")
+                cred_dict = json.loads(firebase_admin_key)
                 cred = credentials.Certificate(cred_dict)
-            else:
-                # Fallback to file-based credential loading
-                resolved_path = os.getenv(
-                    "FIREBASE_ADMIN_KEY_PATH", key_path or "admin_key.json"
-                )
-                cred = credentials.Certificate(resolved_path)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse FIREBASE_ADMIN_KEY as JSON: {e}")
 
             firebase_admin.initialize_app(cred)
 
@@ -67,10 +62,12 @@ class FirestoreService:
         # Retrieve ordered by timestamp descending
         messages_ref = (
             self._db.collection(f"tasks/{task_id}/messages")
-            .order_by("timestamp", direction=firestore.Query.DESCENDING)
+            .order_by("createdAt", direction=firestore.Query.DESCENDING)
         )
+        print(f"Messages reference: {messages_ref}")
 
         docs = messages_ref.get()
+        print(f"Docs: {docs}")
         return [doc.to_dict() | {"id": doc.id} for doc in docs]
 
     def write_task_message(
@@ -96,7 +93,7 @@ class FirestoreService:
 
         # Auto-add server timestamp if caller didn't provide one
         if "timestamp" not in payload:
-            payload["timestamp"] = firestore.SERVER_TIMESTAMP
+            payload["createdAt"] = firestore.SERVER_TIMESTAMP
 
         doc_ref = self._db.collection(f"tasks/{task_id}/messages").document()
         doc_ref.set(payload)

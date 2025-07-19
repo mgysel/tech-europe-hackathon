@@ -3,7 +3,7 @@
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables (only if .env file exists)
 load_dotenv()
 
 # OpenAI settings
@@ -21,6 +21,10 @@ SYSTEM_TEMPLATE = (
     "query containing cuisine, size, and location. After the tool returns, "
     "reply **only** with the restaurant list in pretty JSON."
 )
+
+# Firebase settings
+FIREBASE_ADMIN_KEY = os.getenv("FIREBASE_ADMIN_KEY")
+print(f"Config Firebase admin key: {FIREBASE_ADMIN_KEY}")
 
 # FastAPI settings
 APP_TITLE = "AI Food‑Ordering Assistant"
