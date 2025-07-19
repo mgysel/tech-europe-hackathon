@@ -106,8 +106,15 @@ class AgentService:
             
             last_user_message = None
             for msg in firestore_messages:
-                # Check if message has 'user' or 'ai' field to determine sender
-                if 'user' in msg and msg['user']:
+                # Handle the actual Firestore message format: sender/text
+                if 'sender' in msg and 'text' in msg:
+                    if msg['sender'] == 'me' or msg['sender'] == 'user':
+                        last_user_message = msg['text']
+                        memory.chat_memory.add_user_message(msg['text'])
+                    elif msg['sender'] == 'ai' or msg['sender'] == 'assistant':
+                        memory.chat_memory.add_ai_message(msg['text'])
+                # Fallback to other formats if they exist
+                elif 'user' in msg and msg['user']:
                     last_user_message = msg['user']
                     memory.chat_memory.add_user_message(msg['user'])
                 elif 'ai' in msg and msg['ai']:
@@ -130,7 +137,8 @@ class AgentService:
             # Write the AI response back to Firestore
             firestore_service.write_task_message(
                 task_id=req.task_id,
-                ai=ai_response
+                sender="ai",
+                text=ai_response
             )
             
             return OrderResponse(
