@@ -30,7 +30,17 @@ from api.routes import router
 app = FastAPI(
     title=APP_TITLE,
     version=APP_VERSION,
-    description="AI-powered food ordering assistant using LangChain and OpenAI"
+    description="AI-powered food ordering assistant using LangChain and OpenAI",
+    openapi_tags=[
+        {
+            "name": "orders",
+            "description": "Operations with food orders. Send your order request and get AI-powered restaurant recommendations."
+        },
+        {
+            "name": "health",
+            "description": "Health check endpoints for monitoring and deployment."
+        }
+    ]
 )
 
 # Include all routes
