@@ -28,7 +28,7 @@ class FirestoreService:
         if not firebase_admin._apps:
             # Load from FIREBASE_ADMIN_KEY environment variable (JSON string)
             firebase_admin_key = FIREBASE_ADMIN_KEY
-            print(f"Firebase admin key: {firebase_admin_key}")
+            print(f"Firebase admin key : {firebase_admin_key}")
             if not firebase_admin_key:
                 raise ValueError("FIREBASE_ADMIN_KEY environment variable is required")
             
