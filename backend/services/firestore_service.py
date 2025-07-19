@@ -5,6 +5,10 @@ from __future__ import annotations
 import os
 import json
 from typing import Any, Dict, List, Optional
+from dotenv import load_dotenv
+
+# Load environment variables (only if .env file exists)
+load_dotenv()
 
 import firebase_admin
 from firebase_admin import credentials, firestore
