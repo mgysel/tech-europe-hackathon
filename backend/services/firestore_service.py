@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import json
-from json import loads
 from typing import Any, Dict, List, Optional
 
 import firebase_admin
@@ -30,22 +29,17 @@ class FirestoreService:
         """
 
         if not firebase_admin._apps:
-            if os.path.exists("admin_key.json"):
-                # Attempt to load credentials from JSON string in env var
-                key_json_str = os.getenv("admin_key.json")
-
-                # Parse the JSON string into a dict and build credentials from it
-                cred_dict = json.loads(key_json_str)
+            # Load from FIREBASE_ADMIN_KEY environment variable (JSON string)
+            firebase_admin_key = os.getenv("FIREBASE_ADMIN_KEY")
+            if not firebase_admin_key:
+                raise ValueError("FIREBASE_ADMIN_KEY environment variable is required")
+            
+            try:
+                print("Loading credentials from FIREBASE_ADMIN_KEY environment variable")
+                cred_dict = json.loads(firebase_admin_key)
                 cred = credentials.Certificate(cred_dict)
-            else:
-                print("No admin_key.json file found, using FIREBASE_ADMIN_KEY environment variable")
-                # Fallback to file-based credential loading
-                resolved_path = os.getenv(
-                    "FIREBASE_ADMIN_KEY"
-                )
-                print(f"Resolved path: {resolved_path}")
-                cred = credentials.Certificate(loads(resolved_path))
-                print(f"Cred: {cred}")
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse FIREBASE_ADMIN_KEY as JSON: {e}")
 
             firebase_admin.initialize_app(cred)
 
