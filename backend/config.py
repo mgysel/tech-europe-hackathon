@@ -22,6 +22,9 @@ SYSTEM_TEMPLATE = (
     "reply **only** with the restaurant list in pretty JSON."
 )
 
+# Firebase settings
+FIREBASE_ADMIN_KEY = os.getenv("FIREBASE_ADMIN_KEY")
+
 # FastAPI settings
 APP_TITLE = "AI Food‑Ordering Assistant"
 APP_VERSION = "1.0.0" 

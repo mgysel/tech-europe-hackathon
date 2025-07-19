@@ -2,23 +2,16 @@
 
 from __future__ import annotations
 
-import os
 import json
 from typing import Any, Dict, List, Optional
-from dotenv import load_dotenv
-
-# Load environment variables (only if .env file exists)
-load_dotenv()
 
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+from config import FIREBASE_ADMIN_KEY
+
 class FirestoreService:
     """Service wrapper around Firestore client.
-
-    The service lazily initializes the Firebase Admin SDK using the provided service
-    account key JSON file (``admin_key.json`` by default or the path specified in
-    the ``FIREBASE_ADMIN_KEY_PATH`` environment variable).
     """
 
     def __init__(self, key_path: Optional[str] | None = None):
@@ -34,7 +27,7 @@ class FirestoreService:
 
         if not firebase_admin._apps:
             # Load from FIREBASE_ADMIN_KEY environment variable (JSON string)
-            firebase_admin_key = os.getenv("FIREBASE_ADMIN_KEY")
+            firebase_admin_key = FIREBASE_ADMIN_KEY
             print(f"Firebase admin key: {firebase_admin_key}")
             if not firebase_admin_key:
                 raise ValueError("FIREBASE_ADMIN_KEY environment variable is required")
