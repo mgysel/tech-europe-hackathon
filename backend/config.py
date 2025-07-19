@@ -24,6 +24,7 @@ SYSTEM_TEMPLATE = (
 
 # Firebase settings
 FIREBASE_ADMIN_KEY = os.getenv("FIREBASE_ADMIN_KEY")
+print(f"Config Firebase admin key: {FIREBASE_ADMIN_KEY}")
 
 # FastAPI settings
 APP_TITLE = "AI Food‑Ordering Assistant"
