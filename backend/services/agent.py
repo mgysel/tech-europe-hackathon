@@ -19,7 +19,11 @@ class AgentService:
     """Service for managing LangChain agents, conversation sessions, and order processing."""
     
     def __init__(self):
-        self.llm = ChatOpenAI(model_name=LLM_MODEL, temperature=TEMPERATURE)
+        # For o3 and similar models that don't support custom temperature, don't set it
+        if LLM_MODEL in ["o3", "gpt-4o-mini", "gpt-3.5-turbo", "gpt-4.1"]:
+            self.llm = ChatOpenAI(model_name=LLM_MODEL)
+        else:
+            self.llm = ChatOpenAI(model_name=LLM_MODEL, temperature=TEMPERATURE)
         self.tools = [search_restaurants_tool]
         # In-memory session storage: session_id -> ConversationBufferMemory
         self._session_store: dict[str, ConversationBufferMemory] = {}
