@@ -8,7 +8,8 @@ load_dotenv()
 
 # OpenAI settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-LLM_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")
+LLM_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")  # Agent uses GPT-4.1 for conversation
+RESTAURANT_SEARCH_MODEL = os.getenv("RESTAURANT_SEARCH_MODEL", "o3")  # Restaurant tool uses o3
 TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.3"))
 
 # Agent settings
