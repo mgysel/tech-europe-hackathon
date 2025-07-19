@@ -38,11 +38,14 @@ class FirestoreService:
                 cred_dict = json.loads(key_json_str)
                 cred = credentials.Certificate(cred_dict)
             else:
+                print("No admin_key.json file found, using FIREBASE_ADMIN_KEY environment variable")
                 # Fallback to file-based credential loading
                 resolved_path = os.getenv(
                     "FIREBASE_ADMIN_KEY"
                 )
+                print(f"Resolved path: {resolved_path}")
                 cred = credentials.Certificate(loads(resolved_path))
+                print(f"Cred: {cred}")
 
             firebase_admin.initialize_app(cred)
 
