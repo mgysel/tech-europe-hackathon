@@ -32,10 +32,13 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
     Returns:
         A list with exactly ten dicts in this shape::
             {
-                "rank": int,  # 1‑based ranking (1..10)
+                "rank": int,  # 1-based ranking (1..10)
                 "name": str,
                 "description": str,  # Brief description of the restaurant and why it fits
-                "phone": str,
+                "url": str,  # Restaurant website or menu URL
+                "image_url": str,  # URL to restaurant image
+                "price": int,  # Price estimate in dollars (e.g., 15, 25, 45, 80)
+                "phone": str,  # Restaurant phone number
                 "notes": str  # Additional notes about ordering, capacity, etc.
             }
 
@@ -78,18 +81,24 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
     
     For each restaurant, provide:
     - Real restaurant names (not generic or made-up names)
-    - Accurate phone numbers in proper format
-    - Detailed descriptions explaining why each restaurant fits the request
-    - Practical notes about ordering, capacity, delivery, etc.
+    - Brief descriptions explaining why each restaurant fits the request
+    - Restaurant website URLs or menu links
+    - Image URLs for restaurant photos
+    - Price estimates in dollars (e.g., 15, 25, 45, 80)
+    - Restaurant phone numbers in proper format
+    - Additional notes about ordering, capacity, delivery, etc.
     
     Focus on restaurants that can actually handle the specified group size and requirements.
     
     Return ONLY a valid JSON array with exactly 10 restaurants, each having these fields:
     - rank: integer from 1 to 10
     - name: string (real restaurant name)
-    - description: string (detailed description of restaurant and why it fits)
-    - phone: string (properly formatted phone number)
-    - notes: string (practical ordering information)
+    - description: string (brief description of restaurant and why it fits)
+    - url: string (restaurant website or menu URL)
+    - image_url: string (URL to restaurant image)
+    - price: integer (price estimate in dollars)
+    - phone: string (restaurant phone number)
+    - notes: string (additional notes about ordering, capacity, etc.)
     
     Example format:
     [
@@ -97,6 +106,9 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
             "rank": 1,
             "name": "Mario's Italian Bistro",
             "description": "Family-owned Italian restaurant specializing in authentic wood-fired pizzas and pasta. Perfect for large groups with their spacious dining area and catering services.",
+            "url": "https://mariositalianbistro.com",
+            "image_url": "https://example.com/marios-bistro.jpg",
+            "price": 25,
             "phone": "+1 (555) 123-4567",
             "notes": "Offers group discounts for 20+ people. Requires 24-hour advance notice for large orders. Free delivery within 5 miles."
         }
@@ -134,7 +146,7 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
             logger.warning(f"Expected 10 restaurants, got {len(restaurants)}")
         
         # Ensure each restaurant has required fields
-        required_fields = ["rank", "name", "description", "phone", "notes"]
+        required_fields = ["rank", "name", "description", "url", "image_url", "price", "phone", "notes"]
         validated_restaurants = []
         
         for i, restaurant in enumerate(restaurants[:10]):  # Take only first 10
@@ -149,13 +161,19 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
                     validated_restaurant[field] = restaurant[field]
                 else:
                     logger.warning(f"Missing field '{field}' in restaurant {i}")
-                    validated_restaurant[field] = f"[{field} not provided]"
+                    validated_restaurant[field] = None
             
             # Ensure rank is an integer
             try:
                 validated_restaurant["rank"] = int(validated_restaurant["rank"])
             except (ValueError, TypeError):
                 validated_restaurant["rank"] = i + 1
+            
+            # Ensure price is an integer
+            try:
+                validated_restaurant["price"] = float(validated_restaurant["price"])
+            except (ValueError, TypeError):
+                validated_restaurant["price"] = None
                 
             validated_restaurants.append(validated_restaurant)
         
@@ -163,10 +181,13 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
         while len(validated_restaurants) < 10:
             validated_restaurants.append({
                 "rank": len(validated_restaurants) + 1,
-                "name": f"Restaurant Option {len(validated_restaurants) + 1}",
-                "description": "Additional restaurant option - please contact for details",
-                "phone": "Contact needed",
-                "notes": "Please search for additional options in your area"
+                "name": None,
+                "description": None,
+                "url": None,
+                "image_url": None,
+                "price": None,
+                "phone": None,
+                "notes": None
             })
         
         logger.info(f"Successfully found {len(validated_restaurants)} restaurants using {llm.model_name}")
@@ -185,19 +206,25 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
                 fallback_restaurants.append({
                     "rank": i + 1,
                     "name": line.strip(),
-                    "description": "Restaurant details need verification - please contact directly",
-                    "phone": "Please search for contact information",
-                    "notes": "LLM response could not be parsed as JSON"
+                    "description": None,
+                    "url": None,
+                    "image_url": None,
+                    "price": None,
+                    "phone": None,
+                    "notes": None
                 })
         
         # Fill remaining slots if needed
         while len(fallback_restaurants) < 10:
             fallback_restaurants.append({
                 "rank": len(fallback_restaurants) + 1,
-                "name": f"Restaurant Search Result {len(fallback_restaurants) + 1}",
-                "description": "Please search manually for additional options",
-                "phone": "Contact information needed",
-                "notes": "Fallback result due to parsing error"
+                "name": None,
+                "description": None,
+                "url": None,
+                "image_url": None,
+                "price": None,
+                "phone": None,
+                "notes": None
             })
             
         return fallback_restaurants[:10]
@@ -209,10 +236,13 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
         return [
             {
                 "rank": i + 1,
-                "name": f"Restaurant Option {i + 1}",
-                "description": "Restaurant search encountered an error. Please try again or search manually.",
-                "phone": "Search needed",
-                "notes": f"Error occurred: {str(e)[:100]}"
+                "name": None,
+                "description": None,
+                "url": None,
+                "image_url": None,
+                "price": None,
+                "phone": None,
+                "notes": None
             }
             for i in range(10)
         ] 
