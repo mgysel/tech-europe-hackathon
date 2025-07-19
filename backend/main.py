@@ -122,25 +122,6 @@ def update_order_status(order_id: str, status: str) -> str:
         logger.error(f"Error updating order status: {e}")
         return f"Error updating order status: {str(e)}"
 
-def process_order(order_id: str) -> str:
-    """Process an order and return processing details"""
-    try:
-        # Get order details first
-        order_details = get_order_details(order_id)
-        
-        # Simulate processing logic
-        processing_result = f"Processing order {order_id}...\n"
-        processing_result += f"Order details: {order_details}\n"
-        processing_result += "Processing completed successfully"
-        
-        # Update status to processed
-        update_order_status(order_id, "processed")
-        
-        return processing_result
-    except Exception as e:
-        logger.error(f"Error processing order: {e}")
-        return f"Error processing order: {str(e)}"
-
 @app.get("/")
 async def root():
     """Root endpoint"""
