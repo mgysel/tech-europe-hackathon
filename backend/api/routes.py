@@ -12,17 +12,22 @@ router = APIRouter()
 @router.post("/order", response_model=OrderResponse, tags=["orders"])
 async def place_order(req: OrderRequest) -> OrderResponse:
     """
-    Process a food order request through the AI agent.
+    Process a food order request through the AI agent using Firestore task data.
     
     This endpoint allows you to:
-    - Send a food order request with conversation history
-    - Get AI-powered restaurant recommendations
-    - Maintain conversation context across multiple calls using session_id
+    - Provide a task_id to retrieve conversation history from Firestore
+    - Get AI-powered restaurant recommendations based on the task messages
     
     The AI agent will:
-    1. Ask follow-up questions if needed
-    2. Research the best 5 restaurants for your use case
-    3. Return restaurant names and phone numbers in structured format
+    1. Fetch all messages for the given task_id from Firestore
+    2. Process the conversation history to understand the order requirements
+    3. Ask follow-up questions if needed
+    4. Research the best 5 restaurants for your use case
+    5. Return restaurant names and phone numbers in structured format
+    
+    Firestore Structure:
+    - tasks/{task_id}/messages/{message_id}
+    - Messages should have 'user', 'ai', or 'message' fields
     """
     return await agent_service.process_order(req)
 

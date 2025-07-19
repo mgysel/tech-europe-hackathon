@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import os
 import json
+from json import loads
 from typing import Any, Dict, List, Optional
 
 import firebase_admin
 from firebase_admin import credentials, firestore
-
 
 class FirestoreService:
     """Service wrapper around Firestore client.
@@ -29,20 +29,20 @@ class FirestoreService:
         4. Default file name ``admin_key.json`` in project root.
         """
 
-        # Attempt to load credentials from JSON string in env var
-        key_json_str = os.getenv("admin_key.json")
-
         if not firebase_admin._apps:
-            if key_json_str:
+            if os.path.exists("admin_key.json"):
+                # Attempt to load credentials from JSON string in env var
+                key_json_str = os.getenv("admin_key.json")
+
                 # Parse the JSON string into a dict and build credentials from it
                 cred_dict = json.loads(key_json_str)
                 cred = credentials.Certificate(cred_dict)
             else:
                 # Fallback to file-based credential loading
                 resolved_path = os.getenv(
-                    "FIREBASE_ADMIN_KEY_PATH", key_path or "admin_key.json"
+                    "FIREBASE_ADMIN_KEY"
                 )
-                cred = credentials.Certificate(resolved_path)
+                cred = credentials.Certificate(loads(resolved_path))
 
             firebase_admin.initialize_app(cred)
 
