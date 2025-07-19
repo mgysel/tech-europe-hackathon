@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 from typing import Any, Dict, List, Optional
 
 import firebase_admin
@@ -18,12 +19,31 @@ class FirestoreService:
     """
 
     def __init__(self, key_path: Optional[str] | None = None):
-        # Resolve key path: env var takes precedence, fallback to provided, then default
-        key_path = os.getenv("FIREBASE_ADMIN_KEY_PATH", key_path or "admin_key.json")
+        """Create a FirestoreService instance, initializing Firebase if needed.
 
-        # Initialize the Firebase app only once for the entire process
+        Priority order for credentials:
+        1. Environment variable ``ADMIN_KEY_JSON`` containing the **JSON string** of
+           the service-account key.
+        2. Environment variable ``FIREBASE_ADMIN_KEY_PATH`` pointing to a file.
+        3. ``key_path`` argument (passed explicitly by caller).
+        4. Default file name ``admin_key.json`` in project root.
+        """
+
+        # Attempt to load credentials from JSON string in env var
+        key_json_str = os.getenv("admin_key.json")
+
         if not firebase_admin._apps:
-            cred = credentials.Certificate(key_path)
+            if key_json_str:
+                # Parse the JSON string into a dict and build credentials from it
+                cred_dict = json.loads(key_json_str)
+                cred = credentials.Certificate(cred_dict)
+            else:
+                # Fallback to file-based credential loading
+                resolved_path = os.getenv(
+                    "FIREBASE_ADMIN_KEY_PATH", key_path or "admin_key.json"
+                )
+                cred = credentials.Certificate(resolved_path)
+
             firebase_admin.initialize_app(cred)
 
         # Store a Firestore client instance for reuse
