@@ -19,6 +19,7 @@ For CLI testing:
 """
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from config import APP_TITLE, APP_VERSION
 from api.routes import router
@@ -41,6 +42,15 @@ app = FastAPI(
             "description": "Health check endpoints for monitoring and deployment."
         }
     ]
+)
+
+# Add CORS middleware to allow requests from any origin
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Include all routes
