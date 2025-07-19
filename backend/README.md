@@ -1,12 +1,12 @@
 # AI Hackathon Backend
 
-A FastAPI server that integrates with LangChain and Firebase to process orders using AI agents.
+A FastAPI server that integrates with LangChain to process conversational orders using AI.
 
 ## Features
 
 - **FastAPI Server**: Modern, fast web framework for building APIs
-- **LangChain Integration**: AI-powered order processing using OpenAI
-- **Firebase Integration**: Real-time database for order management
+- **LangChain Integration**: AI-powered conversational order processing using OpenAI
+- **Smart Clarification**: Automatically asks for missing information
 - **RESTful API**: Clean, documented endpoints
 
 ## Setup
@@ -32,36 +32,12 @@ Edit `.env` with your actual values:
 # OpenAI API Key for LangChain
 OPENAI_API_KEY=your_actual_openai_api_key
 
-# Firebase Configuration
-GOOGLE_APPLICATION_CREDENTIALS=path/to/your/serviceAccountKey.json
-FIREBASE_PROJECT_ID=your_firebase_project_id
-
 # Server Configuration
 HOST=0.0.0.0
 PORT=8000
 ```
 
-### 3. Firebase Setup
 
-#### Option A: Using Service Account Key (Recommended for Production)
-
-1. Go to Firebase Console → Project Settings → Service Accounts
-2. Generate a new private key
-3. Download the JSON file
-4. Set the path in `GOOGLE_APPLICATION_CREDENTIALS`
-
-#### Option B: Using Firebase Emulator (Development)
-
-```bash
-# Install Firebase CLI
-npm install -g firebase-tools
-
-# Initialize Firebase emulator
-firebase init emulators
-
-# Start emulator
-firebase emulators:start
-```
 
 ### 4. Run the Server
 
@@ -71,6 +47,18 @@ python main.py
 
 # Or using uvicorn directly
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 5. Test Conversational Orders
+
+```bash
+# Test the conversational order processing
+python test_conversation.py
+
+# Or test manually with curl
+curl -X POST http://localhost:8000/order/process \
+  -H "Content-Type: application/json" \
+  -d '{"order_text": "I want 30 pizzas at 4pm"}'
 ```
 
 ## API Endpoints
@@ -93,20 +81,27 @@ http://localhost:8000
 }
 ```
 
-#### 2. Process Order
-- **GET** `/order/{order_id}`
-- **Description**: Process an order using LangChain agent
-- **Parameters**: 
-  - `order_id` (path): The ID of the order to process
+#### 2. Process Conversational Order
+- **POST** `/order/process`
+- **Description**: Process a conversational order using LangChain agent with clarification capabilities
+- **Request Body**:
+```json
+{
+  "order_text": "I want 30 pizzas at 4pm",
+  "conversation_id": "optional_conversation_id"
+}
+```
 - **Response**:
 ```json
 {
-  "order_id": "order123",
-  "status": "success",
-  "result": "Order processing result from LangChain agent",
-  "message": "Order order123 processed successfully"
+  "response": "Great! I can help you with that order. Do you have any preference for pizza toppings?",
+  "needs_clarification": true,
+  "conversation_id": "conv_1234567890",
+  "order_id": null
 }
 ```
+
+
 
 #### 3. Health Check
 - **GET** `/health`
@@ -120,29 +115,16 @@ http://localhost:8000
 }
 ```
 
-## LangChain Agent Tools
+## How It Works
 
-The LangChain agent has access to the following tools:
+The system uses LangChain with OpenAI's GPT-3.5-turbo to:
 
-1. **get_order_details**: Retrieves order information from Firebase
-2. **update_order_status**: Updates order status in Firebase
-3. **process_order**: Processes an order and returns details
+1. **Understand Orders**: Parse natural language order requests
+2. **Ask Clarifying Questions**: Identify missing information and ask relevant questions
+3. **Provide Friendly Responses**: Maintain conversational tone throughout the interaction
+4. **Detect Completion**: Automatically determine when enough information is gathered
 
-## Firebase Collections
 
-The application expects a `orders` collection in Firebase with documents containing:
-
-```json
-{
-  "order_id": "string",
-  "customer_id": "string",
-  "items": ["array"],
-  "total": "number",
-  "status": "string",
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
-}
-```
 
 ## Development
 
@@ -155,44 +137,44 @@ backend/
 └── README.md          # This file
 ```
 
-### Adding New Tools
+### Customizing Responses
 
-To add new tools to the LangChain agent, modify the `create_langchain_agent()` function in `main.py`:
+To customize the agent's responses, modify the prompt in the `process_order_conversation` function in `main.py`:
 
 ```python
-tools = [
-    # ... existing tools ...
-    Tool(
-        name="your_new_tool",
-        func=your_new_function,
-        description="Description of what your tool does"
-    )
-]
+prompt = f"""
+You are a helpful pizza restaurant order assistant. A customer has said: "{request.order_text}"
+
+Your job is to:
+1. Understand what they want to order
+2. Ask clarifying questions if needed
+3. Be friendly and helpful
+4. If you have enough information, confirm the order details
+
+# Add your custom instructions here
+"""
 ```
 
 ### Error Handling
 
 The application includes comprehensive error handling for:
-- Firebase connection issues
-- LangChain agent creation failures
+- LangChain LLM creation failures
 - API endpoint errors
 - Missing environment variables
 
 ## Production Deployment
 
 1. Set up proper environment variables
-2. Configure Firebase production credentials
-3. Set up proper CORS origins
-4. Use a production WSGI server like Gunicorn
-5. Set up monitoring and logging
+2. Set up proper CORS origins
+3. Use a production WSGI server like Gunicorn
+4. Set up monitoring and logging
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Firebase Connection Error**: Check your service account credentials
-2. **LangChain Agent Error**: Verify your OpenAI API key
-3. **Import Errors**: Ensure all dependencies are installed
+1. **LangChain LLM Error**: Verify your OpenAI API key
+2. **Import Errors**: Ensure all dependencies are installed
 
 ### Logs
 
