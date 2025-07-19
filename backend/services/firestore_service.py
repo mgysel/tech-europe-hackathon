@@ -67,10 +67,12 @@ class FirestoreService:
         # Retrieve ordered by timestamp descending
         messages_ref = (
             self._db.collection(f"tasks/{task_id}/messages")
-            .order_by("timestamp", direction=firestore.Query.DESCENDING)
+            .order_by("createdAt", direction=firestore.Query.DESCENDING)
         )
+        print(f"Messages reference: {messages_ref}")
 
         docs = messages_ref.get()
+        print(f"Docs: {docs}")
         return [doc.to_dict() | {"id": doc.id} for doc in docs]
 
     def write_task_message(
@@ -96,7 +98,7 @@ class FirestoreService:
 
         # Auto-add server timestamp if caller didn't provide one
         if "timestamp" not in payload:
-            payload["timestamp"] = firestore.SERVER_TIMESTAMP
+            payload["createdAt"] = firestore.SERVER_TIMESTAMP
 
         doc_ref = self._db.collection(f"tasks/{task_id}/messages").document()
         doc_ref.set(payload)
