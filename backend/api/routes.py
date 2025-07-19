@@ -1,12 +1,39 @@
 """FastAPI routes for the AI Food-Ordering Assistant."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from schemas.schemas import OrderRequest, OrderResponse
+from schemas.schemas import OrderRequest, OrderResponse, SynthflowCallRequest
 from services.agent import agent_service
+from services.phone_agent import make_synthflow_call, get_synthflow_call
 
 # Create router for order-related endpoints
 router = APIRouter()
+
+
+@router.post("/synthflow-call")
+async def make_call(req: SynthflowCallRequest) -> dict:
+    """Make a call using Synthflow AI."""
+    try:
+        custom_variables = [{"key": "sourcing_request", "value": req.sourcing_request}]
+        result = make_synthflow_call(
+            model_id="90a9b8ba-b0bb-4948-a3fc-8000f5e18846",
+            phone=req.phone,
+            name=req.name,
+            custom_variables=custom_variables,
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/synthflow-call/{call_id}")
+async def get_call(call_id: str) -> dict:
+    """Get call information by call_id."""
+    try:
+        result = get_synthflow_call(call_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/order", response_model=OrderResponse)
@@ -18,4 +45,4 @@ async def place_order(req: OrderRequest) -> OrderResponse:
 @router.get("/healthz")
 def health() -> dict[str, str]:
     """Basic liveness probe compatible with Kubernetes etc."""
-    return {"status": "ok"} 
+    return {"status": "ok"}

@@ -21,4 +21,15 @@ class OrderRequest(BaseModel):
 
 class OrderResponse(BaseModel):
     session_id: str
-    response: str 
+    response: str
+
+
+class CustomVariable(BaseModel):
+    key: str
+    value: str
+
+
+class SynthflowCallRequest(BaseModel):
+    phone: str
+    name: str
+    sourcing_request: str 
