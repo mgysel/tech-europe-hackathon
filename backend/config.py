@@ -3,7 +3,7 @@
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables (only if .env file exists)
 load_dotenv()
 
 # OpenAI settings
