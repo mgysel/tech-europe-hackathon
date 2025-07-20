@@ -305,57 +305,67 @@ class PhoneCallExecutor:
                         print(f"[PHONE CALL EXECUTOR] Response structure: {response}")
 
             # Update the restaurant options with call information
+            updated_restaurants = []
+            field_name = None
+
+            # Check which field contains the restaurant list
             if "text" in last_message and isinstance(last_message["text"], list):
-                updated_restaurants = []
-                for restaurant in last_message["text"]:
-                    if isinstance(restaurant, dict) and "name" in restaurant:
-                        restaurant_name = restaurant["name"]
-                        if restaurant_name in call_results_map:
-                            # Add call_id and set status to "loading" for the restaurant
-                            restaurant["call_id"] = call_results_map[restaurant_name]
-                            restaurant["status"] = "loading"
-                            print(
-                                f"[PHONE CALL EXECUTOR] Set {restaurant_name} status to loading with call_id: {call_results_map[restaurant_name]}"
-                            )
-                        updated_restaurants.append(restaurant)
-
-                # Update the existing message in Firestore instead of creating a new one
+                field_name = "text"
+                restaurant_list = last_message["text"]
+            elif "options" in last_message and isinstance(
+                last_message["options"], list
+            ):
+                field_name = "options"
+                restaurant_list = last_message["options"]
+            else:
                 print(
-                    f"[PHONE CALL EXECUTOR] Updating existing message in Firestore..."
+                    f"[PHONE CALL EXECUTOR] No valid restaurant list found in message"
                 )
-                print(
-                    f"[PHONE CALL EXECUTOR] Updated restaurants: {updated_restaurants}"
-                )
+                return
 
-                # Get the message ID and update the existing document
-                message_id = last_message.get("id")
-                if message_id:
-                    # Update the existing message
-                    doc_ref = firestore_service._db.collection(
-                        f"tasks/{task_id}/messages"
-                    ).document(message_id)
-                    doc_ref.update(
-                        {
-                            "text": updated_restaurants,
-                            "updated_at": firestore.SERVER_TIMESTAMP,
-                        }
-                    )
-                    print(
-                        f"[PHONE CALL EXECUTOR] Updated existing message {message_id}"
-                    )
-                else:
-                    # Fallback: create a new message if we can't find the ID
-                    firestore_service.write_task_message(
-                        task_id=task_id,
-                        sender="system",
-                        text=updated_restaurants,
-                        message_type="restaurant_options_with_calls",
-                    )
-                    print(f"[PHONE CALL EXECUTOR] Created new message (no ID found)")
+            for restaurant in restaurant_list:
+                if isinstance(restaurant, dict) and "name" in restaurant:
+                    restaurant_name = restaurant["name"]
+                    if restaurant_name in call_results_map:
+                        # Add call_id and set status to "loading" for the restaurant
+                        restaurant["call_id"] = call_results_map[restaurant_name]
+                        restaurant["status"] = "loading"
+                        print(
+                            f"[PHONE CALL EXECUTOR] Set {restaurant_name} status to loading with call_id: {call_results_map[restaurant_name]}"
+                        )
+                    updated_restaurants.append(restaurant)
 
-                print(
-                    f"[PHONE CALL EXECUTOR] Updated {len(updated_restaurants)} restaurants with call information"
+            # Update the existing message in Firestore instead of creating a new one
+            print(f"[PHONE CALL EXECUTOR] Updating existing message in Firestore...")
+            print(f"[PHONE CALL EXECUTOR] Updated restaurants: {updated_restaurants}")
+
+            # Get the message ID and update the existing document
+            message_id = last_message.get("id")
+            if message_id:
+                # Update the existing message
+                doc_ref = firestore_service._db.collection(
+                    f"tasks/{task_id}/messages"
+                ).document(message_id)
+                doc_ref.update(
+                    {
+                        field_name: updated_restaurants,
+                        "updated_at": firestore.SERVER_TIMESTAMP,
+                    }
                 )
+                print(f"[PHONE CALL EXECUTOR] Updated existing message {message_id}")
+            else:
+                # Fallback: create a new message if we can't find the ID
+                firestore_service.write_task_message(
+                    task_id=task_id,
+                    sender="system",
+                    text=updated_restaurants,
+                    message_type="restaurant_options_with_calls",
+                )
+                print(f"[PHONE CALL EXECUTOR] Created new message (no ID found)")
+
+            print(
+                f"[PHONE CALL EXECUTOR] Updated {len(updated_restaurants)} restaurants with call information"
+            )
 
         except Exception as e:
             print(f"[PHONE CALL EXECUTOR] Error updating Firestore message: {e}")
@@ -469,47 +479,63 @@ class PhoneCallExecutor:
             last_message = messages[0]  # Most recent message
 
             # Update the restaurant options with recording_url and transcript
+            updated_restaurants = []
+            field_name = None
+
+            # Check which field contains the restaurant list
             if "text" in last_message and isinstance(last_message["text"], list):
-                updated_restaurants = []
-                for restaurant in last_message["text"]:
-                    if isinstance(restaurant, dict) and "name" in restaurant:
-                        # Check if this restaurant has the matching call_id
-                        if restaurant.get("call_id") == call_id:
-                            # Add recording_url and transcript to this restaurant
-                            restaurant["recording_url"] = recording_url
-                            restaurant["transcript"] = transcript
-                            # Set status to "completed" when call results are received
-                            restaurant["status"] = "completed"
-                            print(
-                                f"[PHONE CALL EXECUTOR] Updated {restaurant['name']} with recording_url, transcript, and completed status"
-                            )
-                        updated_restaurants.append(restaurant)
-
-                # Update the existing message in Firestore
+                field_name = "text"
+                restaurant_list = last_message["text"]
+            elif "options" in last_message and isinstance(
+                last_message["options"], list
+            ):
+                field_name = "options"
+                restaurant_list = last_message["options"]
+            else:
                 print(
-                    f"[PHONE CALL EXECUTOR] Updating existing message in Firestore with call results..."
+                    f"[PHONE CALL EXECUTOR] No valid restaurant list found in message"
                 )
+                return
 
-                # Get the message ID and update the existing document
-                message_id = last_message.get("id")
-                if message_id:
-                    # Update the existing message
-                    doc_ref = firestore_service._db.collection(
-                        f"tasks/{task_id}/messages"
-                    ).document(message_id)
-                    doc_ref.update(
-                        {
-                            "text": updated_restaurants,
-                            "updated_at": firestore.SERVER_TIMESTAMP,
-                        }
-                    )
-                    print(
-                        f"[PHONE CALL EXECUTOR] Updated existing message {message_id} with call results"
-                    )
-                else:
-                    print(
-                        f"[PHONE CALL EXECUTOR] No message ID found, cannot update existing message"
-                    )
+            for restaurant in restaurant_list:
+                if isinstance(restaurant, dict) and "name" in restaurant:
+                    # Check if this restaurant has the matching call_id
+                    if restaurant.get("call_id") == call_id:
+                        # Add recording_url and transcript to this restaurant
+                        restaurant["recording_url"] = recording_url
+                        restaurant["transcript"] = transcript
+                        # Set status to "completed" when call results are received
+                        restaurant["status"] = "completed"
+                        print(
+                            f"[PHONE CALL EXECUTOR] Updated {restaurant['name']} with recording_url, transcript, and completed status"
+                        )
+                    updated_restaurants.append(restaurant)
+
+            # Update the existing message in Firestore
+            print(
+                f"[PHONE CALL EXECUTOR] Updating existing message in Firestore with call results..."
+            )
+
+            # Get the message ID and update the existing document
+            message_id = last_message.get("id")
+            if message_id:
+                # Update the existing message
+                doc_ref = firestore_service._db.collection(
+                    f"tasks/{task_id}/messages"
+                ).document(message_id)
+                doc_ref.update(
+                    {
+                        field_name: updated_restaurants,
+                        "updated_at": firestore.SERVER_TIMESTAMP,
+                    }
+                )
+                print(
+                    f"[PHONE CALL EXECUTOR] Updated existing message {message_id} with call results"
+                )
+            else:
+                print(
+                    f"[PHONE CALL EXECUTOR] No message ID found, cannot update existing message"
+                )
 
         except Exception as e:
             print(
@@ -540,45 +566,61 @@ class PhoneCallExecutor:
             last_message = messages[0]  # Most recent message
 
             # Update the restaurant options with the new status
+            updated_restaurants = []
+            field_name = None
+
+            # Check which field contains the restaurant list
             if "text" in last_message and isinstance(last_message["text"], list):
-                updated_restaurants = []
-                for restaurant in last_message["text"]:
-                    if isinstance(restaurant, dict) and "name" in restaurant:
-                        # Find the option by name and update its status
-                        for option in options:
-                            if restaurant["name"] == option["name"]:
-                                restaurant["status"] = status
-                                print(
-                                    f"[PHONE CALL EXECUTOR] Updated status for {restaurant['name']} to {status}"
-                                )
-                                break
-                        updated_restaurants.append(restaurant)
-
-                # Update the existing message in Firestore
+                field_name = "text"
+                restaurant_list = last_message["text"]
+            elif "options" in last_message and isinstance(
+                last_message["options"], list
+            ):
+                field_name = "options"
+                restaurant_list = last_message["options"]
+            else:
                 print(
-                    f"[PHONE CALL EXECUTOR] Updating existing message in Firestore with status..."
+                    f"[PHONE CALL EXECUTOR] No valid restaurant list found in message"
                 )
+                return
 
-                # Get the message ID and update the existing document
-                message_id = last_message.get("id")
-                if message_id:
-                    # Update the existing message
-                    doc_ref = firestore_service._db.collection(
-                        f"tasks/{task_id}/messages"
-                    ).document(message_id)
-                    doc_ref.update(
-                        {
-                            "text": updated_restaurants,
-                            "updated_at": firestore.SERVER_TIMESTAMP,
-                        }
-                    )
-                    print(
-                        f"[PHONE CALL EXECUTOR] Updated existing message {message_id} with status"
-                    )
-                else:
-                    print(
-                        f"[PHONE CALL EXECUTOR] No message ID found, cannot update existing message"
-                    )
+            for restaurant in restaurant_list:
+                if isinstance(restaurant, dict) and "name" in restaurant:
+                    # Find the option by name and update its status
+                    for option in options:
+                        if restaurant["name"] == option["name"]:
+                            restaurant["status"] = status
+                            print(
+                                f"[PHONE CALL EXECUTOR] Updated status for {restaurant['name']} to {status}"
+                            )
+                            break
+                    updated_restaurants.append(restaurant)
+
+            # Update the existing message in Firestore
+            print(
+                f"[PHONE CALL EXECUTOR] Updating existing message in Firestore with status..."
+            )
+
+            # Get the message ID and update the existing document
+            message_id = last_message.get("id")
+            if message_id:
+                # Update the existing message
+                doc_ref = firestore_service._db.collection(
+                    f"tasks/{task_id}/messages"
+                ).document(message_id)
+                doc_ref.update(
+                    {
+                        field_name: updated_restaurants,
+                        "updated_at": firestore.SERVER_TIMESTAMP,
+                    }
+                )
+                print(
+                    f"[PHONE CALL EXECUTOR] Updated existing message {message_id} with status"
+                )
+            else:
+                print(
+                    f"[PHONE CALL EXECUTOR] No message ID found, cannot update existing message"
+                )
 
         except Exception as e:
             print(f"[PHONE CALL EXECUTOR] Error updating Firestore with status: {e}")
