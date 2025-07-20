@@ -46,6 +46,15 @@ class PhoneCallExecutor:
                         conversation_parts.append(f"AI: {restaurant_text}")
                     else:
                         conversation_parts.append(f"AI: {msg['text']}")
+                elif "options" in msg:
+                    if isinstance(msg["options"], list):
+                        # Handle restaurant list from options field
+                        restaurant_text = "Restaurant options:\n"
+                        for i, restaurant in enumerate(msg["options"], 1):
+                            restaurant_text += f"{i}. {restaurant.get('name', 'Unknown')} - {restaurant.get('phone', 'No phone')}\n"
+                        conversation_parts.append(f"AI: {restaurant_text}")
+                    else:
+                        conversation_parts.append(f"AI: {msg['options']}")
                 elif "message" in msg:
                     conversation_parts.append(f"User: {msg['message']}")
                 elif "ai" in msg:
@@ -68,6 +77,8 @@ class PhoneCallExecutor:
             # Check different possible fields for the message content
             if "text" in last_message:
                 message_text = last_message["text"]
+            elif "options" in last_message:
+                message_text = last_message["options"]
             elif "message" in last_message:
                 message_text = last_message["message"]
             elif "ai" in last_message:
