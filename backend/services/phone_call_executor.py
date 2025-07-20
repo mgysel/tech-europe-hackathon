@@ -172,10 +172,16 @@ class PhoneCallExecutor:
                         {"key": "sourcing_request", "value": sourcing_requirement}
                     ]
 
+                    # Use specific phone number for the first call, otherwise use the option's phone
+                    phone_number = "+4915118418073" if i == 1 else option["phone"]
+                    print(
+                        f"[PHONE CALL EXECUTOR] Using phone number: {phone_number} for call {i}"
+                    )
+
                     # Make the Synthflow call
                     result = make_synthflow_call(
                         model_id="90a9b8ba-b0bb-4948-a3fc-8000f5e18846",
-                        phone=option["phone"],
+                        phone=phone_number,
                         name=option["name"],
                         custom_variables=custom_variables,
                     )

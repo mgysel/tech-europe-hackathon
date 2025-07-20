@@ -27,7 +27,7 @@ def search_options_tool(query: str) -> List[Dict[str, Any]]:
     """Search for businesses/services and return the 5 best options for the query.
 
     Args:
-        query: A natural‑language query describing what you need, including type of business/service, 
+        query: A natural‑language query describing what you need, including type of business/service,
                requirements, budget, location, quantity, etc.
 
     Returns:
@@ -45,36 +45,38 @@ def search_options_tool(query: str) -> List[Dict[str, Any]]:
 
     The function uses OpenAI to find and structure real business/service information.
     """
-    
+
     # Use the dedicated search model (o3 by default, but fallback to other models if needed)
     try:
         # For o3 model, explicitly set temperature to 1 (the only supported value)
         if SEARCH_MODEL == "o3":
             llm = ChatOpenAI(
-                model_name=SEARCH_MODEL, 
+                model_name=SEARCH_MODEL,
                 temperature=1,  # o3 only supports temperature=1
-                api_key=OPENAI_API_KEY
+                api_key=OPENAI_API_KEY,
             )
         # For other models that don't support custom temperature, don't set it
-        elif SEARCH_MODEL in ["gpt-4o-mini", "gpt-3.5-turbo", "o1-mini", "o1-preview", "o4-mini"]:
-            llm = ChatOpenAI(
-                model_name=SEARCH_MODEL, 
-                api_key=OPENAI_API_KEY
-            )
+        elif SEARCH_MODEL in [
+            "gpt-4o-mini",
+            "gpt-3.5-turbo",
+            "o1-mini",
+            "o1-preview",
+            "o4-mini",
+        ]:
+            llm = ChatOpenAI(model_name=SEARCH_MODEL, api_key=OPENAI_API_KEY)
         else:
             llm = ChatOpenAI(
-                model_name=SEARCH_MODEL, 
-                temperature=0.1,
-                api_key=OPENAI_API_KEY
+                model_name=SEARCH_MODEL, temperature=0.1, api_key=OPENAI_API_KEY
             )
     except Exception as e:
-        logger.warning(f"Failed to create LLM with {SEARCH_MODEL}, falling back to gpt-4o: {e}")
-        llm = ChatOpenAI(
-            model_name="gpt-4o", 
-            api_key=OPENAI_API_KEY
+        logger.warning(
+            f"Failed to create LLM with {SEARCH_MODEL}, falling back to gpt-4o: {e}"
         )
-    
-    logger.info(f"Searching for options with query: {query} using model: {llm.model_name}")
+        llm = ChatOpenAI(model_name="gpt-4o", api_key=OPENAI_API_KEY)
+
+    logger.info(
+        f"Searching for options with query: {query} using model: {llm.model_name}"
+    )
 
     system_prompt = """You are an expert concierge with extensive knowledge of businesses and services worldwide. 
     
@@ -141,31 +143,40 @@ def search_options_tool(query: str) -> List[Dict[str, Any]]:
     try:
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=human_prompt)
+            HumanMessage(content=human_prompt),
         ]
-        
+
         response = llm.invoke(messages)
         logger.info(f"Raw LLM response: {response.content[:200]}...")
-        
+
         # Parse the JSON response
         options = json.loads(response.content)
-        
+
         # Validate the response structure
         if not isinstance(options, list):
             raise ValueError("Response is not a list")
-        
+
         if len(options) != 5:
             logger.warning(f"Expected 5 options, got {len(options)}")
-        
+
         # Ensure each option has required fields
-        required_fields = ["rank", "name", "description", "url", "image_url", "estimated_price", "phone", "notes"]
+        required_fields = [
+            "rank",
+            "name",
+            "description",
+            "url",
+            "image_url",
+            "estimated_price",
+            "phone",
+            "notes",
+        ]
         validated_options = []
-        
+
         for i, option in enumerate(options[:5]):  # Take only first 5
             if not isinstance(option, dict):
                 logger.error(f"Option {i} is not a dict: {option}")
                 continue
-                
+
             # Ensure all required fields are present
             validated_option = {}
             for field in required_fields:
@@ -174,77 +185,87 @@ def search_options_tool(query: str) -> List[Dict[str, Any]]:
                 else:
                     logger.warning(f"Missing field '{field}' in option {i}")
                     validated_option[field] = None
-            
+
             # Ensure rank is an integer
             try:
                 validated_option["rank"] = int(validated_option["rank"])
             except (ValueError, TypeError):
                 validated_option["rank"] = i + 1
-            
+
             # Ensure estimated_price is an integer
             try:
-                validated_option["estimated_price"] = float(validated_option["estimated_price"])
+                validated_option["estimated_price"] = float(
+                    validated_option["estimated_price"]
+                )
             except (ValueError, TypeError):
                 validated_option["estimated_price"] = None
-                
+
             validated_options.append(validated_option)
-        
+
         # Ensure we have exactly 5 options
         while len(validated_options) < 5:
-            validated_options.append({
-                "rank": len(validated_options) + 1,
-                "name": None,
-                "description": None,
-                "url": None,
-                "image_url": None,
-                "estimated_price": None,
-                "phone": None,
-                "notes": None
-            })
-        
-        logger.info(f"Successfully found {len(validated_options)} options using {llm.model_name}")
-        # Return as JSON string since the agent expects string output
-        return json.dumps(validated_options[:5], indent=2)
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON parsing error: {e}")
-        logger.error(f"Raw response: {response.content}")
-        
-        # Fallback: try to extract business names from the response
-        lines = response.content.strip().split('\n')
-        fallback_options = []
-        
-        for i, line in enumerate(lines[:5]):
-            if line.strip():
-                fallback_options.append({
-                    "rank": i + 1,
-                    "name": line.strip(),
+            validated_options.append(
+                {
+                    "rank": len(validated_options) + 1,
+                    "name": None,
                     "description": None,
                     "url": None,
                     "image_url": None,
                     "estimated_price": None,
                     "phone": None,
-                    "notes": None
-                })
-        
+                    "notes": None,
+                }
+            )
+
+        logger.info(
+            f"Successfully found {len(validated_options)} options using {llm.model_name}"
+        )
+        # Return as JSON string since the agent expects string output
+        return json.dumps(validated_options[:5], indent=2)
+
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parsing error: {e}")
+        logger.error(f"Raw response: {response.content}")
+
+        # Fallback: try to extract business names from the response
+        lines = response.content.strip().split("\n")
+        fallback_options = []
+
+        for i, line in enumerate(lines[:5]):
+            if line.strip():
+                fallback_options.append(
+                    {
+                        "rank": i + 1,
+                        "name": line.strip(),
+                        "description": None,
+                        "url": None,
+                        "image_url": None,
+                        "estimated_price": None,
+                        "phone": None,
+                        "notes": None,
+                    }
+                )
+
         # Fill remaining slots if needed
         while len(fallback_options) < 5:
-            fallback_options.append({
-                "rank": len(fallback_options) + 1,
-                "name": None,
-                "description": None,
-                "url": None,
-                "image_url": None,
-                "estimated_price": None,
-                "phone": None,
-                "notes": None
-            })
-            
+            fallback_options.append(
+                {
+                    "rank": len(fallback_options) + 1,
+                    "name": None,
+                    "description": None,
+                    "url": None,
+                    "image_url": None,
+                    "estimated_price": None,
+                    "phone": None,
+                    "notes": None,
+                }
+            )
+
         return json.dumps(fallback_options[:5], indent=2)
-        
+
     except Exception as e:
         logger.error(f"Unexpected error in search: {e}")
-        
+
         # Ultimate fallback
         fallback_result = [
             {
@@ -255,8 +276,8 @@ def search_options_tool(query: str) -> List[Dict[str, Any]]:
                 "image_url": None,
                 "estimated_price": None,
                 "phone": None,
-                "notes": None
+                "notes": None,
             }
             for i in range(5)
         ]
-        return json.dumps(fallback_result, indent=2) 
+        return json.dumps(fallback_result, indent=2)
