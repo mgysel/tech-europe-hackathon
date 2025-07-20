@@ -56,7 +56,7 @@ def search_options_tool(query: str) -> List[Dict[str, Any]]:
                 api_key=OPENAI_API_KEY
             )
         # For other models that don't support custom temperature, don't set it
-        elif SEARCH_MODEL in ["gpt-4o-mini", "gpt-3.5-turbo"]:
+        elif SEARCH_MODEL in ["gpt-4o-mini", "gpt-3.5-turbo", "o1-mini", "o1-preview", "o4-mini"]:
             llm = ChatOpenAI(
                 model_name=SEARCH_MODEL, 
                 api_key=OPENAI_API_KEY

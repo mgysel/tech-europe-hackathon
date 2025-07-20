@@ -2,6 +2,7 @@
 
 from typing import Tuple
 import uuid
+import ast
 
 from json import loads
 from fastapi import HTTPException
@@ -139,13 +140,29 @@ class AgentService:
             # Process the last user message with the agent
             result = agent.invoke({"input": last_user_message})
             ai_response = result["output"]
+            print(f"\n[ORDER ENDPOINT] AI response: {ai_response}")
 
             try:
-                ai_response_json = loads(ai_response)
+                # Strip whitespace and try to parse as JSON
+                ai_response_cleaned = ai_response.strip()
+                
+                # Try to parse as valid JSON first
+                try:
+                    ai_response_json = loads(ai_response_cleaned)
+                except ValueError:
+                    # If JSON parsing fails, try ast.literal_eval for Python-style dict with single quotes
+                    try:
+                        ai_response_json = ast.literal_eval(ai_response_cleaned)
+                    except (ValueError, SyntaxError):
+                        # As a last resort, try simple quote replacement
+                        ai_response_fixed = ai_response_cleaned.replace("'", '"')
+                        ai_response_json = loads(ai_response_fixed)
+                
+                print(f"\n[ORDER ENDPOINT] AI response JSON: {ai_response_json}")
 
                 # Write the AI response back to Firestore
-                if isinstance(ai_response, dict):
-                    print("It’s a JSON object (dict)")
+                if isinstance(ai_response_json, dict):
+                    print("It's a JSON object (dict)")
                     firestore_service.write_task_message(
                         task_id=req.task_id,
                         sender="ai",
@@ -159,8 +176,8 @@ class AgentService:
                         text=str(ai_response)
                     )
 
-            except (ValueError, TypeError):
-                print("It’s not a JSON object (dict)")
+            except (ValueError, TypeError, Exception):
+                print("It's not a JSON object (dict)")
                 firestore_service.write_task_message(
                     task_id=req.task_id,
                     sender="ai",
