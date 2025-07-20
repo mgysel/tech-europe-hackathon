@@ -84,12 +84,23 @@ class PhoneCallExecutor:
                     if isinstance(restaurant, dict) and "name" in restaurant:
                         # Only include if selected is True
                         if restaurant.get("selected") == True:
-                            options.append(
-                                {
-                                    "name": restaurant["name"],
-                                    "phone": restaurant.get("phone", "No phone"),
-                                }
-                            )
+                            option_data = {
+                                "name": restaurant["name"],
+                                "phone": restaurant.get("phone", "No phone"),
+                                "status": restaurant.get("status", "unknown"),
+                            }
+
+                            # Include additional data if available
+                            if "call_id" in restaurant:
+                                option_data["call_id"] = restaurant["call_id"]
+                            if "recording_url" in restaurant:
+                                option_data["recording_url"] = restaurant[
+                                    "recording_url"
+                                ]
+                            if "transcript" in restaurant:
+                                option_data["transcript"] = restaurant["transcript"]
+
+                            options.append(option_data)
             elif isinstance(message_text, str):
                 # If it's a string, look for numbered options or choices
                 lines = message_text.split("\n")
@@ -136,6 +147,9 @@ class PhoneCallExecutor:
             print(
                 f"[PHONE CALL EXECUTOR] Executing phone calls for {len(selected_options)} selected options"
             )
+
+            # Set status to "loading" for all selected options
+            self._update_selected_options_status(task_id, selected_options, "loading")
 
             call_results = []
 
@@ -280,8 +294,12 @@ class PhoneCallExecutor:
                     if isinstance(restaurant, dict) and "name" in restaurant:
                         restaurant_name = restaurant["name"]
                         if restaurant_name in call_results_map:
-                            # Add just the call_id to the restaurant
+                            # Add call_id and set status to "loading" for the restaurant
                             restaurant["call_id"] = call_results_map[restaurant_name]
+                            restaurant["status"] = "loading"
+                            print(
+                                f"[PHONE CALL EXECUTOR] Set {restaurant_name} status to loading with call_id: {call_results_map[restaurant_name]}"
+                            )
                         updated_restaurants.append(restaurant)
 
                 # Update the existing message in Firestore instead of creating a new one
@@ -443,8 +461,10 @@ class PhoneCallExecutor:
                             # Add recording_url and transcript to this restaurant
                             restaurant["recording_url"] = recording_url
                             restaurant["transcript"] = transcript
+                            # Set status to "completed" when call results are received
+                            restaurant["status"] = "completed"
                             print(
-                                f"[PHONE CALL EXECUTOR] Updated {restaurant['name']} with recording_url and transcript"
+                                f"[PHONE CALL EXECUTOR] Updated {restaurant['name']} with recording_url, transcript, and completed status"
                             )
                         updated_restaurants.append(restaurant)
 
@@ -478,6 +498,73 @@ class PhoneCallExecutor:
             print(
                 f"[PHONE CALL EXECUTOR] Error updating Firestore with call results: {e}"
             )
+            raise
+
+    def _update_selected_options_status(
+        self, task_id: str, options: List[Dict[str, Any]], status: str
+    ) -> None:
+        """
+        Update the status of selected options in Firestore.
+
+        Args:
+            task_id: The Firestore task ID
+            options: List of selected options to update
+            status: The new status to set ("loading" or "completed")
+        """
+        try:
+            # Get the last message (which contains the restaurant options)
+            messages = firestore_service.get_task_messages(task_id)
+            if not messages:
+                print(
+                    f"[PHONE CALL EXECUTOR] No messages found to update status for task_id: {task_id}"
+                )
+                return
+
+            last_message = messages[0]  # Most recent message
+
+            # Update the restaurant options with the new status
+            if "text" in last_message and isinstance(last_message["text"], list):
+                updated_restaurants = []
+                for restaurant in last_message["text"]:
+                    if isinstance(restaurant, dict) and "name" in restaurant:
+                        # Find the option by name and update its status
+                        for option in options:
+                            if restaurant["name"] == option["name"]:
+                                restaurant["status"] = status
+                                print(
+                                    f"[PHONE CALL EXECUTOR] Updated status for {restaurant['name']} to {status}"
+                                )
+                                break
+                        updated_restaurants.append(restaurant)
+
+                # Update the existing message in Firestore
+                print(
+                    f"[PHONE CALL EXECUTOR] Updating existing message in Firestore with status..."
+                )
+
+                # Get the message ID and update the existing document
+                message_id = last_message.get("id")
+                if message_id:
+                    # Update the existing message
+                    doc_ref = firestore_service._db.collection(
+                        f"tasks/{task_id}/messages"
+                    ).document(message_id)
+                    doc_ref.update(
+                        {
+                            "text": updated_restaurants,
+                            "updated_at": firestore.SERVER_TIMESTAMP,
+                        }
+                    )
+                    print(
+                        f"[PHONE CALL EXECUTOR] Updated existing message {message_id} with status"
+                    )
+                else:
+                    print(
+                        f"[PHONE CALL EXECUTOR] No message ID found, cannot update existing message"
+                    )
+
+        except Exception as e:
+            print(f"[PHONE CALL EXECUTOR] Error updating Firestore with status: {e}")
             raise
 
 

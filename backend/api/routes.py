@@ -47,18 +47,18 @@ async def get_call(call_id: str) -> dict:
 async def place_order(req: OrderRequest) -> OrderResponse:
     """
     Process any order request through the AI agent using Firestore task data.
-    
+
     This endpoint allows you to:
     - Provide a task_id to retrieve conversation history from Firestore
     - Get AI-powered business/service recommendations based on the task messages
-    
+
     The AI agent will:
     1. Fetch all messages for the given task_id from Firestore
     2. Process the conversation history to understand the order requirements
     3. Ask follow-up questions if needed
     4. Research the best 10 businesses/services for your use case
     5. Return business/service names and phone numbers in structured format
-    
+
     Firestore Structure:
     - tasks/{task_id}/messages/{message_id}
     - Messages should have 'user', 'ai', or 'message' fields
@@ -149,7 +149,7 @@ async def execute_phone_calls(req: TaskRequest) -> dict:
             req.task_id
         )
 
-        # Extract selected options with call_ids
+        # Extract selected options with call_ids and status
         selected_options_with_calls = []
         for result in call_results:
             if result.get("status") == "success":
@@ -161,10 +161,79 @@ async def execute_phone_calls(req: TaskRequest) -> dict:
                         "name": result.get("restaurant_name"),
                         "phone": result.get("phone"),
                         "call_id": call_id,
+                        "status": "loading",  # Initial status when call is initiated
+                    }
+                )
+            else:
+                # Include failed calls with error status
+                selected_options_with_calls.append(
+                    {
+                        "name": result.get("restaurant_name"),
+                        "phone": result.get("phone"),
+                        "call_id": None,
+                        "status": "failed",
+                        "error": result.get("error", "Unknown error"),
                     }
                 )
 
         return {"selected_options": selected_options_with_calls}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/get-selected-options-status", tags=["tasks"])
+async def get_selected_options_status(req: TaskRequest) -> dict:
+    """
+    Get the current status of selected options from a Firestore task.
+
+    This endpoint returns the current status of all selected options including:
+    - loading: Phone call is in progress
+    - completed: Phone call completed with results
+    - failed: Phone call failed
+
+    Args:
+        req: TaskRequest containing the task_id
+
+    Returns:
+        Dictionary with selected options and their current status
+    """
+    try:
+        # Get the last message (which contains the restaurant options with status)
+        messages = firestore_service.get_task_messages(req.task_id)
+        if not messages:
+            raise HTTPException(
+                status_code=404, detail=f"No messages found for task_id: {req.task_id}"
+            )
+
+        last_message = messages[0]  # Most recent message
+
+        # Extract selected options with their current status
+        selected_options_with_status = []
+        if "text" in last_message and isinstance(last_message["text"], list):
+            for restaurant in last_message["text"]:
+                if isinstance(restaurant, dict) and "name" in restaurant:
+                    # Only include selected options
+                    if restaurant.get("selected") == True:
+                        option_data = {
+                            "name": restaurant["name"],
+                            "phone": restaurant.get("phone", "No phone"),
+                            "status": restaurant.get("status", "unknown"),
+                        }
+
+                        # Include additional data if available
+                        if "call_id" in restaurant:
+                            option_data["call_id"] = restaurant["call_id"]
+                        if "recording_url" in restaurant:
+                            option_data["recording_url"] = restaurant["recording_url"]
+                        if "transcript" in restaurant:
+                            option_data["transcript"] = restaurant["transcript"]
+
+                        selected_options_with_status.append(option_data)
+
+        return {"selected_options": selected_options_with_status}
 
     except HTTPException:
         raise
