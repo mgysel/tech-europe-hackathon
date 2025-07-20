@@ -184,7 +184,7 @@ class PhoneCallExecutor:
                     ]
 
                     # Use specific phone number for the first call, otherwise use the option's phone
-                    phone_number = "+4915118418073" if i == 1 else option["phone"]
+                    phone_number = option["phone"]
                     print(
                         f"[PHONE CALL EXECUTOR] Using phone number: {phone_number} for call {i}"
                     )
