@@ -1,6 +1,6 @@
 # Backend Architecture
 
-This document explains the organization and structure of the AI Food-Ordering Assistant backend.
+This document explains the organization and structure of the AI Ordering Assistant backend.
 
 ## Directory Structure
 
@@ -20,7 +20,7 @@ backend/
 │   └── schemas.py         # Pydantic models for request/response
 ├── tools/
 │   ├── __init__.py
-│   └── restaurant_tools.py # LangChain tools for restaurant search
+│   └── search_tools.py     # LangChain tools for business/service search
 └── tests/
     ├── __init__.py
     └── test_services.py    # Unit tests

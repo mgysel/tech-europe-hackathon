@@ -2,7 +2,9 @@
 
 from typing import Tuple
 import uuid
+import ast
 
+from json import loads
 from fastapi import HTTPException
 from langchain_openai import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
@@ -11,7 +13,7 @@ from langchain.agents.agent import AgentExecutor
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from config import LLM_MODEL, TEMPERATURE, SYSTEM_TEMPLATE
-from tools.restaurant_tools import search_restaurants_tool
+from tools.search_tools import search_options_tool
 from schemas.schemas import OrderRequest, OrderResponse
 from services.firestore_service import firestore_service
 
@@ -25,7 +27,7 @@ class AgentService:
             self.llm = ChatOpenAI(model_name=LLM_MODEL)
         else:
             self.llm = ChatOpenAI(model_name=LLM_MODEL, temperature=TEMPERATURE)
-        self.tools = [search_restaurants_tool]
+        self.tools = [search_options_tool]
         # In-memory session storage: session_id -> ConversationBufferMemory
         self._session_store: dict[str, ConversationBufferMemory] = {}
 
@@ -137,18 +139,65 @@ class AgentService:
             
             # Process the last user message with the agent
             result = agent.invoke({"input": last_user_message})
-            ai_response = str(result["output"])
-            
-            # Write the AI response back to Firestore
-            firestore_service.write_task_message(
-                task_id=req.task_id,
-                sender="ai",
-                text=ai_response
-            )
+            ai_response = result["output"]
+            print(f"\n[ORDER ENDPOINT] AI response: {ai_response}")
+
+            try:
+                # Strip whitespace and try to parse as JSON
+                ai_response_cleaned = ai_response.strip()
+                
+                # Remove markdown code block formatting if present
+                if ai_response_cleaned.startswith('```json'):
+                    ai_response_cleaned = ai_response_cleaned[7:]  # Remove '```json'
+                elif ai_response_cleaned.startswith('```'):
+                    ai_response_cleaned = ai_response_cleaned[3:]   # Remove '```'
+                
+                if ai_response_cleaned.endswith('```'):
+                    ai_response_cleaned = ai_response_cleaned[:-3]  # Remove trailing '```'
+                
+                ai_response_cleaned = ai_response_cleaned.strip()
+                
+                # Try to parse as valid JSON first
+                try:
+                    ai_response_json = loads(ai_response_cleaned)
+                except ValueError:
+                    # If JSON parsing fails, try ast.literal_eval for Python-style dict with single quotes
+                    try:
+                        ai_response_json = ast.literal_eval(ai_response_cleaned)
+                    except (ValueError, SyntaxError):
+                        # As a last resort, try simple quote replacement
+                        ai_response_fixed = ai_response_cleaned.replace("'", '"')
+                        ai_response_json = loads(ai_response_fixed)
+                
+                print(f"\n[ORDER ENDPOINT] AI response JSON: {ai_response_json}")
+
+                # Write the AI response back to Firestore
+                if isinstance(ai_response_json, (dict, list)):
+                    print("It's a JSON object (dict or list)")
+                    firestore_service.write_task_message(
+                        task_id=req.task_id,
+                        sender="ai",
+                        options=ai_response_json
+                    )
+                
+                else:
+                    firestore_service.write_task_message(
+                        task_id=req.task_id,
+                        sender="ai",
+                        text=str(ai_response)
+                    )
+
+            except (ValueError, TypeError, Exception):
+                print("It's not a JSON object (dict)")
+                firestore_service.write_task_message(
+                    task_id=req.task_id,
+                    sender="ai",
+                    text=str(ai_response)
+                )
             
             return OrderResponse(
                 session_id=session_id, 
-                response=ai_response
+                response=str(ai_response)
             )
 
         except HTTPException:

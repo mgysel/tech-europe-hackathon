@@ -1,12 +1,13 @@
 # AI Hackathon Backend
 
-A FastAPI server that integrates with LangChain to process conversational orders using AI.
+A FastAPI server that integrates with LangChain to process conversational ordering tasks using AI.
 
 ## Features
 
 - **FastAPI Server**: Modern, fast web framework for building APIs
-- **LangChain Integration**: AI-powered conversational order processing using OpenAI
+- **LangChain Integration**: AI-powered conversational ordering assistance using OpenAI
 - **Smart Clarification**: Automatically asks for missing information
+- **Universal Ordering**: Handles any type of ordering task (food, services, products, etc.)
 - **RESTful API**: Clean, documented endpoints
 
 ## Setup
@@ -143,13 +144,13 @@ To customize the agent's responses, modify the prompt in the `process_order_conv
 
 ```python
 prompt = f"""
-You are a helpful pizza restaurant order assistant. A customer has said: "{request.order_text}"
+You are a helpful ordering assistant. A customer has said: "{request.order_text}"
 
 Your job is to:
-1. Understand what they want to order
+1. Understand what they want to order or procure
 2. Ask clarifying questions if needed
 3. Be friendly and helpful
-4. If you have enough information, confirm the order details
+4. If you have enough information, search for the best options
 
 # Add your custom instructions here
 """
