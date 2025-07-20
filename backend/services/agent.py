@@ -3,6 +3,7 @@
 from typing import Tuple
 import uuid
 
+from json import loads
 from fastapi import HTTPException
 from langchain_openai import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
@@ -137,18 +138,38 @@ class AgentService:
             
             # Process the last user message with the agent
             result = agent.invoke({"input": last_user_message})
-            ai_response = str(result["output"])
-            
-            # Write the AI response back to Firestore
-            firestore_service.write_task_message(
-                task_id=req.task_id,
-                sender="ai",
-                text=ai_response
-            )
+            ai_response = result["output"]
+
+            try:
+                ai_response_json = loads(ai_response)
+
+                # Write the AI response back to Firestore
+                if isinstance(ai_response, dict):
+                    print("It’s a JSON object (dict)")
+                    firestore_service.write_task_message(
+                        task_id=req.task_id,
+                        sender="ai",
+                        options=ai_response_json
+                    )
+                
+                else:
+                    firestore_service.write_task_message(
+                        task_id=req.task_id,
+                        sender="ai",
+                        text=str(ai_response)
+                    )
+
+            except (ValueError, TypeError):
+                print("It’s not a JSON object (dict)")
+                firestore_service.write_task_message(
+                    task_id=req.task_id,
+                    sender="ai",
+                    text=str(ai_response)
+                )
             
             return OrderResponse(
                 session_id=session_id, 
-                response=ai_response
+                response=str(ai_response)
             )
 
         except HTTPException:
