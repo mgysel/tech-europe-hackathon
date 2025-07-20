@@ -376,7 +376,7 @@ class PhoneCallExecutor:
         completed_calls = set()
 
         # Poll each call_id sequentially every 5 seconds for 100 seconds total
-        max_iterations = 20  # 100 seconds / 5 seconds = 20 iterations
+        max_iterations = 60  # 100 seconds / 5 seconds = 20 iterations
         poll_interval = 5  # seconds
 
         for iteration in range(max_iterations):
