@@ -1,4 +1,4 @@
-"""FastAPI routes for the AI Food-Ordering Assistant."""
+"""FastAPI routes for the AI Ordering Assistant."""
 
 from fastapi import APIRouter, HTTPException
 
@@ -38,18 +38,18 @@ async def get_call(call_id: str) -> dict:
 @router.post("/order", response_model=OrderResponse, tags=["orders"])
 async def place_order(req: OrderRequest) -> OrderResponse:
     """
-    Process a food order request through the AI agent using Firestore task data.
+    Process any order request through the AI agent using Firestore task data.
     
     This endpoint allows you to:
     - Provide a task_id to retrieve conversation history from Firestore
-    - Get AI-powered restaurant recommendations based on the task messages
+    - Get AI-powered business/service recommendations based on the task messages
     
     The AI agent will:
     1. Fetch all messages for the given task_id from Firestore
     2. Process the conversation history to understand the order requirements
     3. Ask follow-up questions if needed
-    4. Research the best 5 restaurants for your use case
-    5. Return restaurant names and phone numbers in structured format
+    4. Research the best 10 businesses/services for your use case
+    5. Return business/service names and phone numbers in structured format
     
     Firestore Structure:
     - tasks/{task_id}/messages/{message_id}

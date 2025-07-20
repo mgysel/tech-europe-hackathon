@@ -2,10 +2,10 @@
 
 Key features
 ------------
-* Receives a user order request (e.g. "I need to order pizza for 20 people").
+* Receives a user order request (e.g. "I need catering for 20 people" or "I need office supplies").
 * A LangChain agent replies with any follow‑up questions it needs.
-* The agent then invokes a tool call (implemented as an OpenAI function‑calling tool via LangChain) that researches the best 5 restaurants for the use case.
-* Finally, it answers with the chosen restaurants' names & phone numbers in structured JSON.
+* The agent then invokes a tool call (implemented as an OpenAI function‑calling tool via LangChain) that researches the best 10 businesses/services for the use case.
+* Finally, it answers with the chosen options' names & phone numbers in structured JSON.
 
 How to run
 ~~~~~~~~~~
@@ -15,7 +15,7 @@ How to run
 
 For CLI testing:
 ~~~~~~~~~~
-``python cli.py "I need sushi for 10 people"``
+``python cli.py "I need catering for 10 people"``
 """
 
 from fastapi import FastAPI
@@ -31,11 +31,11 @@ from api.routes import router
 app = FastAPI(
     title=APP_TITLE,
     version=APP_VERSION,
-    description="AI-powered food ordering assistant using LangChain and OpenAI",
+    description="AI-powered ordering assistant using LangChain and OpenAI",
     openapi_tags=[
         {
             "name": "orders",
-            "description": "Operations with food orders. Send your order request and get AI-powered restaurant recommendations."
+            "description": "Operations with any ordering task. Send your order request and get AI-powered business/service recommendations."
         },
         {
             "name": "health",

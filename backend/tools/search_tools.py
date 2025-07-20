@@ -1,4 +1,4 @@
-"""Restaurant search tools for the AI Food-Ordering Assistant."""
+"""Search tools for the AI Ordering Assistant."""
 
 import json
 import logging
@@ -8,7 +8,7 @@ from langchain_openai import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage
 from langchain.tools import tool
 
-from config import RESTAURANT_SEARCH_MODEL, OPENAI_API_KEY
+from config import SEARCH_MODEL, OPENAI_API_KEY
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -16,89 +16,92 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Search‑restaurants TOOL (OpenAI function‑call)
+# Search TOOL (OpenAI function‑call)
 # ---------------------------------------------------------------------------
 @tool(
-    "search_restaurants",
+    "search_options",
     args_schema=None,
     return_direct=True,
 )
-def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
-    """Search for restaurants and return the 10 best options for the query.
+def search_options_tool(query: str) -> List[Dict[str, Any]]:
+    """Search for businesses/services and return the 10 best options for the query.
 
     Args:
-        query: A natural‑language query describing cuisine, head‑count, budget, location, etc.
+        query: A natural‑language query describing what you need, including type of business/service, 
+               requirements, budget, location, quantity, etc.
 
     Returns:
         A list with exactly ten dicts in this shape::
             {
                 "rank": int,  # 1-based ranking (1..10)
                 "name": str,
-                "description": str,  # Brief description of the restaurant and why it fits
-                "url": str,  # Restaurant website or menu URL
-                "image_url": str,  # URL to restaurant image
+                "description": str,  # Brief description of the business/service and why it fits
+                "url": str,  # Business website or relevant URL
+                "image_url": str,  # URL to business/service image
                 "price": int,  # Price estimate in dollars (e.g., 15, 25, 45, 80)
-                "phone": str,  # Restaurant phone number
-                "notes": str  # Additional notes about ordering, capacity, etc.
+                "phone": str,  # Business phone number
+                "notes": str  # Additional notes about ordering, capacity, availability, etc.
             }
 
-    The function uses OpenAI's o3 model to find and structure real restaurant information.
+    The function uses OpenAI to find and structure real business/service information.
     """
     
-    # Use the dedicated restaurant search model (o3 by default, but fallback to other models if needed)
+    # Use the dedicated search model (o3 by default, but fallback to other models if needed)
     try:
         # For o3 model, explicitly set temperature to 1 (the only supported value)
-        if RESTAURANT_SEARCH_MODEL == "o3":
+        if SEARCH_MODEL == "o3":
             llm = ChatOpenAI(
-                model_name=RESTAURANT_SEARCH_MODEL, 
+                model_name=SEARCH_MODEL, 
                 temperature=1,  # o3 only supports temperature=1
                 api_key=OPENAI_API_KEY
             )
         # For other models that don't support custom temperature, don't set it
-        elif RESTAURANT_SEARCH_MODEL in ["gpt-4o-mini", "gpt-3.5-turbo"]:
+        elif SEARCH_MODEL in ["gpt-4o-mini", "gpt-3.5-turbo"]:
             llm = ChatOpenAI(
-                model_name=RESTAURANT_SEARCH_MODEL, 
+                model_name=SEARCH_MODEL, 
                 api_key=OPENAI_API_KEY
             )
         else:
             llm = ChatOpenAI(
-                model_name=RESTAURANT_SEARCH_MODEL, 
+                model_name=SEARCH_MODEL, 
                 temperature=0.1,
                 api_key=OPENAI_API_KEY
             )
     except Exception as e:
-        logger.warning(f"Failed to create LLM with {RESTAURANT_SEARCH_MODEL}, falling back to gpt-4o: {e}")
+        logger.warning(f"Failed to create LLM with {SEARCH_MODEL}, falling back to gpt-4o: {e}")
         llm = ChatOpenAI(
             model_name="gpt-4o", 
             api_key=OPENAI_API_KEY
         )
     
-    logger.info(f"Searching restaurants for query: {query} using model: {llm.model_name}")
+    logger.info(f"Searching for options with query: {query} using model: {llm.model_name}")
 
-    system_prompt = """You are an expert restaurant concierge with extensive knowledge of restaurants worldwide. 
+    system_prompt = """You are an expert concierge with extensive knowledge of businesses and services worldwide. 
     
-    Your task is to recommend exactly 10 real restaurants that best match the user's requirements. 
+    Your task is to recommend exactly 10 real businesses/services that best match the user's requirements. 
+    This could include restaurants, catering services, event planners, retail stores, service providers, 
+    or any other type of business that can fulfill ordering or procurement needs.
     
-    For each restaurant, provide:
-    - Real restaurant names (not generic or made-up names)
-    - Brief descriptions explaining why each restaurant fits the request
-    - Restaurant website URLs or menu links
-    - Image URLs for restaurant photos
+    For each business/service, provide:
+    - Real business names (not generic or made-up names)
+    - Brief descriptions explaining why each business fits the request
+    - Business website URLs or relevant links
+    - Image URLs for business photos
     - Price estimates in dollars (e.g., 15, 25, 45, 80)
-    - Restaurant phone numbers in proper format
-    - Additional notes about ordering, capacity, delivery, etc.
+    - Business phone numbers in proper format
+    - Additional notes about ordering, capacity, delivery, availability, etc.
     
-    Focus on restaurants that can actually handle the specified group size and requirements.
+    Focus on businesses/services that can actually handle the specified requirements.
     
-    Return ONLY a valid JSON array with exactly 10 restaurants, each having these fields:
+    Return ONLY a valid JSON array with exactly 10 businesses/services, each having these fields:
     - rank: integer from 1 to 10
-    - name: string (real restaurant name)
-    - description: string (brief description of restaurant and why it fits)
-    - url: string (restaurant website or menu URL)
-    - image_url: string (URL to restaurant image)
+    - name: string (real business name)
+    - description: string (brief description of business and why it fits)
+    - url: string (business website or relevant URL)
+    - image_url: string (URL to business image)
     - price: integer (price estimate in dollars)
-    - phone: string (restaurant phone number)
-    - notes: string (additional notes about ordering, capacity, etc.)
+    - phone: string (business phone number)
+    - notes: string (additional notes about ordering, capacity, availability, etc.)
     
     Example format:
     [
@@ -114,17 +117,17 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
         }
     ]"""
 
-    human_prompt = f"""Find 10 real restaurants that best match this request: {query}
+    human_prompt = f"""Find 10 real businesses/services that best match this request: {query}
 
     Consider factors like:
-    - Cuisine type requested
-    - Group size and capacity
+    - Type of business/service requested
+    - Quantity/group size requirements
     - Location/delivery area
     - Budget constraints
-    - Dietary restrictions
+    - Special requirements or restrictions
     - Timing requirements
 
-    Provide practical, actionable restaurant recommendations with real contact information."""
+    Provide practical, actionable recommendations with real contact information."""
 
     try:
         messages = [
@@ -136,51 +139,51 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
         logger.info(f"Raw LLM response: {response.content[:200]}...")
         
         # Parse the JSON response
-        restaurants = json.loads(response.content)
+        options = json.loads(response.content)
         
         # Validate the response structure
-        if not isinstance(restaurants, list):
+        if not isinstance(options, list):
             raise ValueError("Response is not a list")
         
-        if len(restaurants) != 10:
-            logger.warning(f"Expected 10 restaurants, got {len(restaurants)}")
+        if len(options) != 10:
+            logger.warning(f"Expected 10 options, got {len(options)}")
         
-        # Ensure each restaurant has required fields
+        # Ensure each option has required fields
         required_fields = ["rank", "name", "description", "url", "image_url", "price", "phone", "notes"]
-        validated_restaurants = []
+        validated_options = []
         
-        for i, restaurant in enumerate(restaurants[:10]):  # Take only first 10
-            if not isinstance(restaurant, dict):
-                logger.error(f"Restaurant {i} is not a dict: {restaurant}")
+        for i, option in enumerate(options[:10]):  # Take only first 10
+            if not isinstance(option, dict):
+                logger.error(f"Option {i} is not a dict: {option}")
                 continue
                 
             # Ensure all required fields are present
-            validated_restaurant = {}
+            validated_option = {}
             for field in required_fields:
-                if field in restaurant:
-                    validated_restaurant[field] = restaurant[field]
+                if field in option:
+                    validated_option[field] = option[field]
                 else:
-                    logger.warning(f"Missing field '{field}' in restaurant {i}")
-                    validated_restaurant[field] = None
+                    logger.warning(f"Missing field '{field}' in option {i}")
+                    validated_option[field] = None
             
             # Ensure rank is an integer
             try:
-                validated_restaurant["rank"] = int(validated_restaurant["rank"])
+                validated_option["rank"] = int(validated_option["rank"])
             except (ValueError, TypeError):
-                validated_restaurant["rank"] = i + 1
+                validated_option["rank"] = i + 1
             
             # Ensure price is an integer
             try:
-                validated_restaurant["price"] = float(validated_restaurant["price"])
+                validated_option["price"] = float(validated_option["price"])
             except (ValueError, TypeError):
-                validated_restaurant["price"] = None
+                validated_option["price"] = None
                 
-            validated_restaurants.append(validated_restaurant)
+            validated_options.append(validated_option)
         
-        # Ensure we have exactly 10 restaurants
-        while len(validated_restaurants) < 10:
-            validated_restaurants.append({
-                "rank": len(validated_restaurants) + 1,
+        # Ensure we have exactly 10 options
+        while len(validated_options) < 10:
+            validated_options.append({
+                "rank": len(validated_options) + 1,
                 "name": None,
                 "description": None,
                 "url": None,
@@ -190,20 +193,20 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
                 "notes": None
             })
         
-        logger.info(f"Successfully found {len(validated_restaurants)} restaurants using {llm.model_name}")
-        return validated_restaurants[:10]  # Ensure exactly 10
+        logger.info(f"Successfully found {len(validated_options)} options using {llm.model_name}")
+        return validated_options[:10]
         
     except json.JSONDecodeError as e:
         logger.error(f"JSON parsing error: {e}")
         logger.error(f"Raw response: {response.content}")
         
-        # Fallback: try to extract restaurant names from the response
+        # Fallback: try to extract business names from the response
         lines = response.content.strip().split('\n')
-        fallback_restaurants = []
+        fallback_options = []
         
         for i, line in enumerate(lines[:10]):
             if line.strip():
-                fallback_restaurants.append({
+                fallback_options.append({
                     "rank": i + 1,
                     "name": line.strip(),
                     "description": None,
@@ -215,9 +218,9 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
                 })
         
         # Fill remaining slots if needed
-        while len(fallback_restaurants) < 10:
-            fallback_restaurants.append({
-                "rank": len(fallback_restaurants) + 1,
+        while len(fallback_options) < 10:
+            fallback_options.append({
+                "rank": len(fallback_options) + 1,
                 "name": None,
                 "description": None,
                 "url": None,
@@ -227,10 +230,10 @@ def search_restaurants_tool(query: str) -> List[Dict[str, Any]]:
                 "notes": None
             })
             
-        return fallback_restaurants[:10]
+        return fallback_options[:10]
         
     except Exception as e:
-        logger.error(f"Unexpected error in restaurant search: {e}")
+        logger.error(f"Unexpected error in search: {e}")
         
         # Ultimate fallback
         return [

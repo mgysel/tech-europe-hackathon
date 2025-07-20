@@ -29,8 +29,8 @@ class OrderResponse(BaseModel):
         example="550e8400-e29b-41d4-a716-446655440000"
     )
     response: str = Field(
-        description="AI response with restaurant recommendations or follow-up questions",
-        example="Based on your requirements, here are the top 5 pizza restaurants in Berlin that can deliver to Schmidstr. 2F:\n\n1. Pizza Palace - (030) 1234-5678\n2. Bella Pizza - (030) 2345-6789\n3. Roma Pizza - (030) 3456-7890\n4. Napoli Express - (030) 4567-8901\n5. Pizza Express - (030) 5678-9012\n\nAll restaurants offer delivery for 30 people within your budget of $10/person."
+        description="AI response with business/service recommendations or follow-up questions",
+        example="Based on your requirements, here are the top 5 catering services in Berlin that can deliver to Schmidstr. 2F:\n\n1. Elite Catering - (030) 1234-5678\n2. Berlin Events Co - (030) 2345-6789\n3. Corporate Meals - (030) 3456-7890\n4. Quick Catering - (030) 4567-8901\n5. Premium Events - (030) 5678-9012\n\nAll services can handle 30 people within your budget of $10/person."
     ) 
 
 

@@ -12,7 +12,7 @@ from langchain.agents.agent import AgentExecutor
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from config import LLM_MODEL, TEMPERATURE, SYSTEM_TEMPLATE
-from tools.restaurant_tools import search_restaurants_tool
+from tools.search_tools import search_options_tool
 from schemas.schemas import OrderRequest, OrderResponse
 from services.firestore_service import firestore_service
 
@@ -26,7 +26,7 @@ class AgentService:
             self.llm = ChatOpenAI(model_name=LLM_MODEL)
         else:
             self.llm = ChatOpenAI(model_name=LLM_MODEL, temperature=TEMPERATURE)
-        self.tools = [search_restaurants_tool]
+        self.tools = [search_options_tool]
         # In-memory session storage: session_id -> ConversationBufferMemory
         self._session_store: dict[str, ConversationBufferMemory] = {}
 
