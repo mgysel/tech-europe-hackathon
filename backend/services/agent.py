@@ -146,6 +146,17 @@ class AgentService:
                 # Strip whitespace and try to parse as JSON
                 ai_response_cleaned = ai_response.strip()
                 
+                # Remove markdown code block formatting if present
+                if ai_response_cleaned.startswith('```json'):
+                    ai_response_cleaned = ai_response_cleaned[7:]  # Remove '```json'
+                elif ai_response_cleaned.startswith('```'):
+                    ai_response_cleaned = ai_response_cleaned[3:]   # Remove '```'
+                
+                if ai_response_cleaned.endswith('```'):
+                    ai_response_cleaned = ai_response_cleaned[:-3]  # Remove trailing '```'
+                
+                ai_response_cleaned = ai_response_cleaned.strip()
+                
                 # Try to parse as valid JSON first
                 try:
                     ai_response_json = loads(ai_response_cleaned)
@@ -161,8 +172,8 @@ class AgentService:
                 print(f"\n[ORDER ENDPOINT] AI response JSON: {ai_response_json}")
 
                 # Write the AI response back to Firestore
-                if isinstance(ai_response_json, dict):
-                    print("It's a JSON object (dict)")
+                if isinstance(ai_response_json, (dict, list)):
+                    print("It's a JSON object (dict or list)")
                     firestore_service.write_task_message(
                         task_id=req.task_id,
                         sender="ai",

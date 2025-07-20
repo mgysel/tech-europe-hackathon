@@ -194,7 +194,8 @@ def search_options_tool(query: str) -> List[Dict[str, Any]]:
             })
         
         logger.info(f"Successfully found {len(validated_options)} options using {llm.model_name}")
-        return validated_options[:10]
+        # Return as JSON string since the agent expects string output
+        return json.dumps(validated_options[:10], indent=2)
         
     except json.JSONDecodeError as e:
         logger.error(f"JSON parsing error: {e}")
@@ -230,13 +231,13 @@ def search_options_tool(query: str) -> List[Dict[str, Any]]:
                 "notes": None
             })
             
-        return fallback_options[:10]
+        return json.dumps(fallback_options[:10], indent=2)
         
     except Exception as e:
         logger.error(f"Unexpected error in search: {e}")
         
         # Ultimate fallback
-        return [
+        fallback_result = [
             {
                 "rank": i + 1,
                 "name": None,
@@ -248,4 +249,5 @@ def search_options_tool(query: str) -> List[Dict[str, Any]]:
                 "notes": None
             }
             for i in range(10)
-        ] 
+        ]
+        return json.dumps(fallback_result, indent=2) 
