@@ -1,4 +1,3 @@
-from typing import List
 from pydantic import BaseModel, Field
 
 
@@ -42,4 +41,12 @@ class CustomVariable(BaseModel):
 class SynthflowCallRequest(BaseModel):
     phone: str
     name: str
-    sourcing_request: str 
+    sourcing_request: str
+
+
+class TaskRequest(BaseModel):
+    task_id: str = Field(
+        ...,
+        description="Firestore task ID to retrieve the last message from",
+        example="task_abc123def456",
+    )
